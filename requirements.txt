@@ -7,3 +7,9 @@ psycopg2-binary
 celery
 redis
 python-multipart
+langchain
+langchain-huggingface
+langchain-community
+sentence-transformers
+qdrant-client
+pypdf

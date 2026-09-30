@@ -4,6 +4,9 @@ from sqlalchemy import text
 from app.core.database import engine, Base, get_db
 from app.models.document import Document
 from app.worker import process_document_task 
+import os
+import shutil
+from fastapi import FastAPI, Depends, UploadFile, File
 
 Base.metadata.create_all(bind=engine)
 
@@ -30,6 +33,26 @@ async def upload_document(file: UploadFile = File(...), db: Session = Depends(ge
 
     return {
         "message": "تم استلام الملف بنجاح وإرساله للمعالجة",
+        "document_id": new_doc.id,
+        "status": new_doc.status
+    }
+UPLOAD_DIR = "uploads"
+
+@app.post("/upload/")
+async def upload_document(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    new_doc = Document(filename=file.filename, status="pending")
+    db.add(new_doc)
+    db.commit()
+    db.refresh(new_doc)
+
+    process_document_task.delay(new_doc.id, file.filename, file_path)
+
+    return {
+        "message": "تم استلام الملف وحفظه بنجاح، وجاري معالجته بالذكاء الاصطناعي",
         "document_id": new_doc.id,
         "status": new_doc.status
     }
